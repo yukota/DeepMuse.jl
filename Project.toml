@@ -1,4 +1,4 @@
-name = "DeepMuse.jl"
+name = "DeepMuse"
 uuid = "ce6b9716-23c8-11e9-0ee5-1f782e4601b0"
 authors = ["YuK_Ota <whitenightwinter@gmail.com>"]
 version = "0.1.0"
@@ -6,7 +6,10 @@ version = "0.1.0"
 [deps]
 CureMIDI = "13f811c2-fe19-11e8-119b-d10f1cb6898b"
 FluidSynth = "7b5f247c-b83c-11e8-2667-b92b55f05ea5"
+Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 MIDI = "f57c4921-e30c-5f49-b073-3f2f2ada663e"
 PortAudio = "80ea8bcb-4634-5cb3-8ee8-a132660d1d2d"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 RingBuffers = "f6d8bcc6-4e01-5431-93c4-9d6004abab90"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
