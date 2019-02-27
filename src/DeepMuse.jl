@@ -8,6 +8,8 @@ module DeepMuse
   include("sample_generator.jl")
   import .SampleGenerator
 
+  include("model.jl")
+  import .Model
 
   function create_data()
     @debug "create data"
@@ -16,10 +18,13 @@ module DeepMuse
     sf2_paths = glob("*.sf2", gm_dir)
 
     @debug typeof(sf2_paths)
-    SampleGenerator.generate(sf2_paths, 2)
+    training_dataset = SampleGenerator.generate(sf2_paths, 2)
+    return traing_dataset
+
   end
 
-  function train()
+  function train(training_dataset)
+    
     @debug "start train"
   end
 
@@ -33,7 +38,8 @@ end # module
 function main()
   @debug "start DeepMuse"
   # create sample data.
-  DeepMuse.create_data()
+  training_dataset = DeepMuse.create_data()
+  DeepMuse.train(training_dataset)
 
 
   @debug "finish normally"

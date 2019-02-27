@@ -2,16 +2,33 @@ module SampleGenerator
 
   using Random
   using MIDI
+  using SampledSignals
+
   using CureMIDI
 
+
+  const TPQ = Int16(960)
+  const BPM = 60
+  const SAMPLE_RATE = 44100
+
+  struct TrainingData
+     track::MIDI.MIDITrack
+     sound::SampledSignals.SampleBuf
+  end
+
   function generate(sf2_paths::Vector{String}, sample_num_per_sf2::Int)
+    training_dataset = Vector{TrainingData}()
     Random.seed!(0)
     for sf2_path in sf2_paths
       @debug sf2_path
       for i in 1:sample_num_per_sf2
-        midi_track = create_rand_midi_track()
+        track = create_rand_midi_track()
+        sampled_buf = synth(track, TPQ, BPM, SAMPLE_RATE, sf2_path)
+        training_data = TrainingData(track, sampled_buf)
+        push!(training_dataset, training_data)
       end
     end
+    return training_dataset
   end
 
   function create_rand_midi_track()
