@@ -28,11 +28,11 @@ data_yf = Iterators.flatten(repeated(data_y, 100))
 dataset = zip(data_xf, data_yf)
 
 m = Chain(
-  Dense(1, 20, relu),
-  Dense(20, 1, σ))
+    Dense(1, 20, relu),
+    Dense(20, 1, σ))
 
 
-loss(x, y) = mse(m(x), y) 
+loss(x, y) = mse(m(x), y)
 
 accuracy(x, y) = mean(onecold(m(x)) .== onecold(y))
 opt = Descent()
