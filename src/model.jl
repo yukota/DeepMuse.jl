@@ -64,31 +64,16 @@ function prepare_dataset(preprocessed_training_dataset)
         @debug  "time" time(data.spectrogramas[1])
 
 
-        # for eighteen_note_spectrogram in data.spectrogramas
-        #     # ステレオで2ch
-        #     @debug "eightenn --------------------"
-
-        #     for(freq, time, power) in zip(freq(eighteen_note_spectrogram), time(eighteen_note_spectrogram),  power(eighteen_note_spectrogram))
-        #         @debug "one freq----------------"
-        #         @debug "freq" freq "len" length(freq)
-        #         @debug "time" time "len" length(time)
-        #         @debug "power" power "len" length(power)
-        #     end
-
-        # end
-
 
     end
 
 
-    # note range 0(as C0)-127
-    # power *2
     return frames_set
 
 end
 
 function attacks(frames::Vector{EighthFrame})
-    local ret = Vector{Int}()
+        local ret = Vector{Int}()
     for frame in frames
         if frame.is_attack
             push!(ret, 1)
@@ -99,27 +84,23 @@ function attacks(frames::Vector{EighthFrame})
     ret
 end
 
-function create_model(input_dim, output_dim)
-    # chain = Chain(
-    #     Conv((3 ,3), 1->10, relu),
-    #     x->reshape(x, : , size(x, 4)),
-    #     # 3x3x10
-    #     Dense(90, output_dim, tanh)
-    #     )
+function create_model(input_dim::Tuple, output_dim::UInt)
+    chain = Chain(Conv((3, 3), 1=>10, relu),
+        x->reshape(x, :, size(x, 4)),
+        # 3x3x10
+        Dense(90, output_dim, tanh))
 
-    # model = Model(chain)
+    model = Model(chain)
 end
 
-function convert_to_dataset(preprocessed_training_dataset, training_dataset)
+function convert_to_dataset(preprocessed_training_dataset, training_dataset::Vector{EighthFrame})
     inputs = Vector()
-    outputs = Vector()
     for training_data in training_dataset
-        push!(inputs, power(training_data.spectrogramas[1]))
-
-        out = Vector()
-
-
+        push!(inputs, power(training_data.spectrogram))
     end
+    outputs = attacks(training_dataset)
+
+    zip(inputs, outputs)
 end
 
 
@@ -135,17 +116,16 @@ function train!(model::Model, preprocessed_training_dataset::Vector{Preprocessed
 
 end
 
-function output_dim(data::PreprocessedTrainingData)
+function get_output_dim(data::PreprocessedTrainingData)
     tick_per_eighth = TPQ / 2
     notes = MIDI.getnotes(data.track, TPQ)
     # durationをtick per quater /2 2 で割る
     duration_ticks = duration_tick(notes)
     unit_length = Int(floor(duration_ticks / tick_per_eighth))
-    return Int(unit_length)
 end
 
-function input_dim(data::PreprocessedTrainingData)
-    return size(data.spectrogramas[1])
+function get_input_dim(data::PreprocessedTrainingData)
+    size(power(data.spectrogram))
 end
 
 

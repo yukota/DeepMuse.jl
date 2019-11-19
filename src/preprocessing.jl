@@ -5,6 +5,8 @@ using SampledSignals
 
 using DSP
 
+using Revise
+
 include("types.jl")
 
 
@@ -19,35 +21,31 @@ include("types.jl")
 # overlap nperseg // 2
 #f, t, zxx = stft(wave_data, fs=fs, window='blackman', nperseg=fs // 2)
 
+function preprocess(traing_data::TrainingData)
+    track = traing_data.track
+    spectrogram = convert_to_spectrogram(traing_data.sound)
+    preprocess_data = PreprocessedTrainingData(track, spectrogram)
+end
 
 function preprocess(training_dataset::Vector{TrainingData})
     preprocessed_dataset = Vector{PreprocessedTrainingData}()
     for item in training_dataset
-        track = item.track
-        spectrogramas = spectrogram(item.sound)
-        preprocess_data = PreprocessedTrainingData(track, spectrogramas)
-
+        preprocess_data = preprocess(item)
         push!(preprocessed_dataset, preprocess_data)
     end
-    return preprocessed_dataset
+    preprocessed_dataset
 end
 
-function spectrogram(sample_buf::SampledSignals.SampleBuf)
+function convert_to_spectrogram(buf::AbstractVector, samplerate)
+    tick_per_eighteen_note::UInt = ceil(TPQ / 2)
+    frame_per_eighteen_node = CureMIDI.tick_to_frame(tick_per_eighteen_note, TPQ, BPM, SAMPLE_RATE)
+    n::Int64 = ceil(length(buf) / frame_per_eighteen_node)
+    spectrogram = DSP.spectrogram(buf, n, nfft = SAMPLE_RATE, fs = samplerate)
+end
+
+function convert_to_spectrogram(sample_buf::SampledSignals.SampleBuf)
     samplerate = SampledSignals.samplerate(sample_buf)
-
-    spectrograms = Vector()
-    for ch in 1:nchannels(sample_buf)
-        input = sample_buf.data[:, ch]
-
-        #n=div(length(s), 8)
-        # n 8部音符ごと
-        tick_per_eighteen_note::UInt = ceil(TPQ / 2)
-        frame_per_eighteen_node = CureMIDI.tick_to_frame(tick_per_eighteen_note, TPQ, BPM, SAMPLE_RATE)
-        n::Int64 = ceil(length(input) / frame_per_eighteen_node)
-        @debug "num of data" n input
-        spectrogram = DSP.spectrogram(input, n, nfft=SAMPLE_RATE, fs=samplerate)
-
-        push!(spectrograms, spectrogram)
-    end
-    return spectrograms
+    # left only.
+    input = @view sample_buf.data[:, 1]
+    spectrogram = convert_to_spectrogram(input, samplerate)
 end

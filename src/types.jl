@@ -11,5 +11,6 @@ end
 
 struct PreprocessedTrainingData
     track::MIDI.MIDITrack
-    spectrogramas::Vector{DSP.Periodograms.Spectrogram}
+    # left sound only.
+    spectrogram::DSP.Periodograms.Spectrogram
 end

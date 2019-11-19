@@ -20,31 +20,32 @@ function create_data()
 
     # limit for test
     sf2_paths = sf2_paths[1:2]
-
-    @debug typeof(sf2_paths)
     training_dataset = generate(sf2_paths, 2)
     return training_dataset
 end
 
 
 function main()
-    @debug "start DeepMuse"
+    @time @debug "start DeepMuse"
     # create sample data.
-    raw_training_dataset = create_data()
+    @time  raw_training_dataset = create_data()
 
     @debug "start Preprocess"
-    preprocessed_training_dataset = preprocess(raw_training_dataset)
-
-
-    input_dim = input_dim(preprocessed_training_dataset[1])
-    output_dim = output_dim(preprocessed_training_dataset[1])
+    # 入力のパラメータの採取のために作る.
+    # TODO パラメータの入力でなんとかしたい.
+    sample_of_input = preprocess(raw_training_dataset[1])
+    input_dim = get_input_dim(sample_of_input)
+    output_dim = get_output_dim(sample_of_input)
+    @show input_dim
 
     model = create_model(input_dim, output_dim)
-    train!(model, preprocessed_training_dataset)
+
+
+    # train!(model, preprocessed_training_dataset)
 
 
 
-    predict(model)
+    # predict(model)
 
     @debug "finish normally"
 end
