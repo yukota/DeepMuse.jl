@@ -36,7 +36,7 @@ EighthFrame() = EighthFrame(false)
 八分音符ごとに区切る。
 アタックのタイミングでフラグを上げる
 """
-function prepare_dataset(preprocessed_training_dataset)
+function prepare_dataset(preprocessed_training_dataset::Vector{PreprocessedTrainingData})
 
     # Xs = Array()
     # Xy = Array()
@@ -56,15 +56,6 @@ function prepare_dataset(preprocessed_training_dataset)
             frames[frame_no] = EighthFrame(true)
         end
         push!(frames_set, frames)
-
-        # quaterごとに音を切る
-        # freq x time
-        @debug  "aaaa" size(power(data.spectrogramas[1]))
-        @debug  "freq" freq(data.spectrogramas[1])
-        @debug  "time" time(data.spectrogramas[1])
-
-
-
     end
 
 
@@ -72,8 +63,18 @@ function prepare_dataset(preprocessed_training_dataset)
 
 end
 
+
+function create_model(input_dim::Tuple, output_dim::UInt)
+    chain = Chain(Conv(input_dim, 1 => 10, relu),
+        x->reshape(x, :, size(x, 4)),
+        # 3x3x10
+        Dense(90, output_dim, tanh))
+
+    model = Model(chain)
+end
+
 function attacks(frames::Vector{EighthFrame})
-        local ret = Vector{Int}()
+    local ret = Vector{Int}()
     for frame in frames
         if frame.is_attack
             push!(ret, 1)
@@ -84,21 +85,13 @@ function attacks(frames::Vector{EighthFrame})
     ret
 end
 
-function create_model(input_dim::Tuple, output_dim::UInt)
-    chain = Chain(Conv((3, 3), 1=>10, relu),
-        x->reshape(x, :, size(x, 4)),
-        # 3x3x10
-        Dense(90, output_dim, tanh))
-
-    model = Model(chain)
-end
-
-function convert_to_dataset(preprocessed_training_dataset, training_dataset::Vector{EighthFrame})
+function convert_to_dataset(preprocessed_training_dataset::Vector{PreprocessedTrainingData}, eight_frames::Vector{Vector{EighthFrame}})
     inputs = Vector()
-    for training_data in training_dataset
-        push!(inputs, power(training_data.spectrogram))
+    outputs = Vector()
+    for (one_input, one_output) in zip(preprocessed_training_dataset, eight_frames)
+        push!(inputs, power(one_input.spectrogram))
+        push!(outputs, attacks(one_output))
     end
-    outputs = attacks(training_dataset)
 
     zip(inputs, outputs)
 end
@@ -110,7 +103,7 @@ function train!(model::Model, preprocessed_training_dataset::Vector{Preprocessed
     dataset = convert_to_dataset(preprocessed_training_dataset, frame_set)
 
 
-    loss(x, y) = mse(model(x), y)
+    loss(x, y) = binarycrossentropy(model(x), y)
     opt = Descent()
     Flux.train!(loss, params(model), dataset, opt)
 

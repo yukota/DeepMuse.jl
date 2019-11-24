@@ -12,21 +12,28 @@ const BPM = 120
 const SAMPLE_RATE = 44100
 
 
-function generate(sf2_paths::Vector{String}, sample_num_per_sf2::Int)
+function generate(sf2_path::String, sample_num_per_sf2::Int)
     training_dataset = Vector{TrainingData}()
     Random.seed!(0)
-    for sf2_path in sf2_paths
-        @debug sf2_path
-        for i in 1:sample_num_per_sf2
-            track = create_rand_midi_track()
-            sampled_buf = synth(track, TPQ, BPM, SAMPLE_RATE, sf2_path)
-            @debug length(sampled_buf)
-            training_data = TrainingData(track, sampled_buf)
-            push!(training_dataset, training_data)
-        end
+    for i in 1:sample_num_per_sf2
+        track = create_rand_midi_track()
+        sampled_buf = synth(track, TPQ, BPM, SAMPLE_RATE, sf2_path)
+        training_data = TrainingData(track, sampled_buf)
+        push!(training_dataset, training_data)
     end
     return training_dataset
 end
+
+function generate(sf2_paths::Vector{String}, sample_num_per_sf2::Int)
+    training_dataset = Vector{TrainingData}()
+    for sf2_path in sf2_paths
+        trainig_data_of_path = generate(sf2_path, sample_num_per_sf2)
+        append!(training_dataset, trainig_data_of_path)
+    end
+    return training_dataset
+end
+
+
 
 function create_rand_midi_track()
     track = MIDI.MIDITrack()
