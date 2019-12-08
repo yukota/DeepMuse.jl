@@ -1,11 +1,12 @@
 
+using Statistics
+
 using Flux
 
 using MIDI
 
 include("types.jl")
 
-const TPQ = Int16(960)
 
 
 struct Model
@@ -13,116 +14,76 @@ struct Model
 end
 
 
-# TPQ is 960
-# BPM is 120
-# SAPMLE_RATE is 44100
-# 1000ms * 10
-
-# 八分音符960/2tick
 
 function duration_tick(notes)
     starttick = notes[1].position
-    endtick = maximum(map(note->note.position + note.duration, notes))
+    endtick = maximum(map(note -> note.position + note.duration, notes))
     return endtick - starttick
 end
 
 
-mutable struct EighthFrame
-    is_attack::Bool
-end
-EighthFrame() = EighthFrame(false)
-
-"""
-八分音符ごとに区切る。
-アタックのタイミングでフラグを上げる
-"""
-function prepare_dataset(preprocessed_training_dataset::Vector{PreprocessedTrainingData})
-
-    # Xs = Array()
-    # Xy = Array()
-    @debug "prepare_dataset" preprocessed_training_dataset
-    tick_per_eighth = TPQ / 2
-    frames_set = Vector{Vector{EighthFrame}}()
-    for data in preprocessed_training_dataset
-        notes = MIDI.getnotes(data.track, TPQ)
-        # durationをtick per quater /2 2 で割る
-        duration_ticks = duration_tick(notes)
-        unit_length = Int(floor(duration_ticks / tick_per_eighth))
-        frames = fill(EighthFrame(), Int(unit_length))
-        @debug "note" notes
-        for note in notes
-            #noteのpostionと一致する箇所をアタックとする
-            frame_no = Int(floor(note.position / tick_per_eighth)) + 1
-            frames[frame_no] = EighthFrame(true)
-        end
-        push!(frames_set, frames)
-    end
-
-
-    return frames_set
-
-end
-
-
-function create_model(input_dim::Tuple, output_dim::UInt)
-    chain = Chain(Conv(input_dim, 1 => 10, relu),
-        x->reshape(x, :, size(x, 4)),
-        # 3x3x10
-        Dense(90, output_dim, tanh))
+function create_model(input_dim::UInt)
+    chain = Chain(Dense(input_dim, 2, relu), softmax)
 
     model = Model(chain)
 end
 
-function attacks(frames::Vector{EighthFrame})
-    local ret = Vector{Int}()
-    for frame in frames
-        if frame.is_attack
-            push!(ret, 1)
-        else
-            push!(ret, 0)
+
+
+function train!(model::Model, training_data_set::Vector{TrainingData})
+    # spearate accuracy check data.
+    accuracy_check_data_set = training_data_set[end-1:end]
+    true_training_data_set = training_data_set[1:end-2]
+
+
+    inputs = create_inputs(true_training_data_set)
+    outputs = create_outputs(true_training_data_set)
+    dataset = zip(inputs, outputs)
+
+    acc_inputs = create_inputs(accuracy_check_data_set)
+    acc_outputs = create_outputs(accuracy_check_data_set)
+    acc_dataset = zip(acc_inputs, acc_outputs)
+
+    loss(x, y) = Flux.crossentropy(model.model(x), y)
+    accuracy(x, y) = mean(Flux.onecold(model.model(x)) .== Flux.onecold(y))
+    opt = Flux.ADAM()
+
+    eval_cb = function callback()
+        total_acc = 0
+        for (in, out) in acc_dataset
+            total_acc += accuracy(in, out)
         end
+        total_acc /= length(acc_dataset)
+        @show total_acc
+
+    end
+
+    Flux.train!(loss, params(model.model), dataset, opt, cb = eval_cb)
+
+
+
+end
+
+function create_inputs(training_data_set::Vector{TrainingData})
+    ret = Vector{Vector{Float32}}()
+    for training_data in training_data_set
+        push!(ret, training_data.data)
     end
     ret
 end
 
-function convert_to_dataset(preprocessed_training_dataset::Vector{PreprocessedTrainingData}, eight_frames::Vector{Vector{EighthFrame}})
-    inputs = Vector()
-    outputs = Vector()
-    for (one_input, one_output) in zip(preprocessed_training_dataset, eight_frames)
-        push!(inputs, power(one_input.spectrogram))
-        push!(outputs, attacks(one_output))
+function create_outputs(training_data_set::Vector{TrainingData})
+    ret = Vector{Flux.OneHotVector}()
+    for training_data in training_data_set
+        push!(ret, onehot(training_data))
     end
-
-    zip(inputs, outputs)
+    ret
 end
 
-
-function train!(model::Model, preprocessed_training_dataset::Vector{PreprocessedTrainingData})
-    frame_set = prepare_dataset(preprocessed_training_dataset)
-
-    dataset = convert_to_dataset(preprocessed_training_dataset, frame_set)
-
-
-    loss(x, y) = binarycrossentropy(model(x), y)
-    opt = Descent()
-    Flux.train!(loss, params(model), dataset, opt)
-
-end
-
-function get_output_dim(data::PreprocessedTrainingData)
-    tick_per_eighth = TPQ / 2
-    notes = MIDI.getnotes(data.track, TPQ)
-    # durationをtick per quater /2 2 で割る
-    duration_ticks = duration_tick(notes)
-    unit_length = Int(floor(duration_ticks / tick_per_eighth))
-end
-
-function get_input_dim(data::PreprocessedTrainingData)
-    size(power(data.spectrogram))
-end
-
-
-function predict(model::Model)
-    @debug "hagerarion train"
-
+function onehot(training_data::TrainingData)
+    if training_data.is_attack
+        return Flux.OneHotVector(1, 2)
+    else
+        return Flux.OneHotVector(2, 2)
+    end
 end

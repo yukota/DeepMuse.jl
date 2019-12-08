@@ -1,16 +1,21 @@
 
 using SampledSignals
 using MIDI
-using DSP
+
+struct SoundFileParam
+    tpq::Int16
+    bpm::Real
+    sample_rate::Real
+end
 
 
-struct TrainingData
+struct SoundData
     track::MIDI.MIDITrack
     sound::SampledSignals.SampleBuf
 end
 
-struct PreprocessedTrainingData
-    track::MIDI.MIDITrack
-    # left sound only.
-    spectrogram::DSP.Periodograms.Spectrogram
+
+struct TrainingData
+    data::Vector{Float32}
+    is_attack::Bool
 end
