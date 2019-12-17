@@ -47,20 +47,7 @@ function train!(model::Model, training_data_set::Vector{TrainingData})
     loss(x, y) = Flux.crossentropy(model.model(x), y)
     accuracy(x, y) = mean(Flux.onecold(model.model(x)) .== Flux.onecold(y))
     opt = Flux.ADAM()
-
-    eval_cb = function callback()
-        total_acc = 0
-        for (in, out) in acc_dataset
-            total_acc += accuracy(in, out)
-        end
-        total_acc /= length(acc_dataset)
-        @show total_acc
-
-    end
-
-    Flux.train!(loss, params(model.model), dataset, opt, cb = eval_cb)
-
-
+    Flux.train!(loss, params(model.model), dataset, opt)
 
 end
 
@@ -86,4 +73,8 @@ function onehot(training_data::TrainingData)
     else
         return Flux.OneHotVector(2, 2)
     end
+end
+
+function predict(model::Model, data::Vector{Float32})
+    model.model(data)
 end

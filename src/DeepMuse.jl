@@ -12,6 +12,8 @@ include("model.jl")
 
 include("types.jl")
 
+include("view.jl")
+
 function get_soundfont_paths()
     gm_dir = joinpath(@__DIR__, "..", "res", "soundfont", "gm")
     sf2_paths = glob("*.sf2", gm_dir)
@@ -36,7 +38,7 @@ function main()
     sound_file_param = SoundFileParam(960, 120, 44100)
 
     # learning param.
-    INPUT_LENGTH::UInt = 10
+    INPUT_LENGTH::UInt = 50
 
 
 
@@ -66,9 +68,37 @@ function main()
 
     train!(model, training_data_set)
 
+    #visaualize input.
+    attack_not_attack_check(training_data_set)
+
 
 
     # predict(model)
+
+
+    test_data_set = Vector{TrainingData}()
+    for sf2_path in get_soundfont_paths()[end-1:end]
+        sound_data::Vector = generate(sf2_path, 1)
+        for one_sound_data in sound_data
+            training_data::Vector = preprocess(
+                one_sound_data,
+                sound_file_param,
+                INPUT_LENGTH,
+            )
+            append!(test_data_set, training_data)
+        end
+    end
+
+    # attack
+    for test_data in test_data_set
+        if test_data.is_attack
+            @debug predict(model, test_data.data)
+
+            break
+        end
+    end
+
+
 
     @debug "finish normally"
 end
